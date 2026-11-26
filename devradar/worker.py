@@ -6,6 +6,7 @@ import logging
 import os
 import sqlite3
 import subprocess
+import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -70,8 +71,11 @@ def news_job(conn: sqlite3.Connection, cfg: dict, now: datetime) -> None:
 def _setup_logging() -> None:
     base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / ".local" / "share") / "devradar"
     base.mkdir(parents=True, exist_ok=True)
-    handler = RotatingFileHandler(base / "worker.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-    logging.basicConfig(level=logging.INFO, handlers=[handler, logging.StreamHandler()],
+    handlers: list[logging.Handler] = [
+        RotatingFileHandler(base / "worker.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")]
+    if sys.stderr is not None:  # pythonw (Task Scheduler) has no console
+        handlers.append(logging.StreamHandler())
+    logging.basicConfig(level=logging.INFO, handlers=handlers, force=True,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 

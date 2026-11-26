@@ -95,3 +95,16 @@ def test_no_alerts_no_trigger(env, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: called.append(a))
     assert trigger_hermes(conn, cfg) is False
     assert called == []
+
+
+def test_logging_without_console(tmp_path, monkeypatch):
+    import logging
+    from devradar import worker
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(sys, "stderr", None)
+    root = logging.getLogger()
+    monkeypatch.setattr(root, "handlers", [])
+    worker._setup_logging()
+    kinds = {type(h).__name__ for h in root.handlers}
+    assert kinds == {"RotatingFileHandler"}
+    assert (tmp_path / "devradar" / "worker.log").exists()
