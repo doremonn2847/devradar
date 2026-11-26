@@ -1,0 +1,23 @@
+# Copy to %APPDATA%\devradar\config.yaml. Every key is optional; defaults shown.
+timezone: Asia/Bangkok
+db_path: "%LOCALAPPDATA%/devradar/devradar.db"
+collector:
+  interval_min: 20
+  finished_after_min: 30
+  roots:
+    claude_code: "~/.claude/projects"
+    codex: "~/.codex/sessions"
+llm:
+  base_url: https://api.deepseek.com
+  model: deepseek-flash
+  api_key_env: DEEPSEEK_API_KEY
+cost:
+  soft_cap_usd: 6
+rules:
+  cooldown_days: 3
+  stalled_days: 3
+news:
+  watchlist: []          # extra GitHub repos, e.g. "langchain-ai/langgraph"
+  keywords: [agent, llm, rag, mcp, claude, codex, retrieval, nlp, python, typescript]
+hermes:
+  alert_command: [hermes, cron, run, devradar-alerts]
