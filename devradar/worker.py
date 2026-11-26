@@ -5,9 +5,10 @@ import json
 import logging
 import os
 import sqlite3
+import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -23,20 +24,23 @@ from devradar.state.project_state import update_project_state
 from devradar.usage import month_cost
 
 log = logging.getLogger("devradar")
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # no console flash for children of pythonw
 
 
 def run_cycle(conn: sqlite3.Connection, cfg: dict, llm: LLMClient | None, now: datetime):
     finished = collect(conn, cfg, now)
-    over_cap = month_cost(conn, now) >= cfg["cost"]["soft_cap_usd"]
-    if over_cap and finished:
-        log.info("soft cap reached; skipping LLM state updates for %d sessions", len(finished))
+    backfill_cutoff = now - timedelta(days=cfg["llm_backfill_days"])
     for sid in finished:
         row = conn.execute("SELECT project, record_json FROM sessions WHERE session_id=?", (sid,)).fetchone()
         rec = SessionRecord.from_json_dict(json.loads(row["record_json"]))
         conn.execute("UPDATE sessions SET excerpt=? WHERE session_id=?",
                      (distill(rec, cfg["excerpt_max_tokens"]), sid))
         conn.commit()
-        if llm is not None and not over_cap and row["project"] != "unknown":
+        recent = rec.last_event_at is not None and rec.last_event_at >= backfill_cutoff
+        over_cap = month_cost(conn, now) >= cfg["cost"]["soft_cap_usd"]  # re-checked per call
+        if over_cap:
+            log.info("soft cap reached; skipping LLM state update for %s", sid)
+        if llm is not None and recent and not over_cap and row["project"] != "unknown":
             try:
                 update_project_state(conn, row["project"], sid, llm)
             except Exception:  # network/API errors must not stop the cycle
@@ -50,9 +54,13 @@ def trigger_hermes(conn: sqlite3.Connection, cfg: dict) -> bool:
     if not ids:
         return False
     cmd = list(cfg["hermes"]["alert_command"])
+    exe = shutil.which(cmd[0])  # resolves hermes.exe / .cmd shims on Windows
+    if exe:
+        cmd[0] = exe
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-    except (OSError, subprocess.SubprocessError) as e:
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           env={**os.environ, "PYTHONUTF8": "1"}, timeout=120, creationflags=NO_WINDOW)
+    except Exception as e:  # never let a trigger problem escape the scheduled job
         log.error("hermes trigger failed: %s", e)
         return False
     if r.returncode != 0:

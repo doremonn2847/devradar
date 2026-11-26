@@ -20,8 +20,9 @@ def _name(p: str) -> str:
 def _git(cwd: str, *args: str) -> str | None:
     try:
         r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True,
-                           encoding="utf-8", timeout=5)
-    except (OSError, subprocess.SubprocessError):
+                           encoding="utf-8", errors="replace", timeout=5,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception:
         return None
     return r.stdout if r.returncode == 0 else None
 

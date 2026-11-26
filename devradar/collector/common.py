@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from devradar.models import SessionRecord
 
@@ -18,12 +18,16 @@ def load(line: str) -> dict | None:
 
 
 def parse_ts(v) -> datetime | None:
+    """Parse an ISO timestamp, always returning an aware UTC datetime (naive input is taken as UTC)."""
     if not isinstance(v, str):
         return None
     try:
-        return datetime.fromisoformat(v.replace("Z", "+00:00"))
+        t = datetime.fromisoformat(v.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return t.astimezone(timezone.utc)
 
 
 def touch(rec: SessionRecord, ts: datetime | None) -> None:
@@ -35,7 +39,9 @@ def touch(rec: SessionRecord, ts: datetime | None) -> None:
         rec.last_event_at = ts
 
 
-def add_user_prompt(rec: SessionRecord, text: str) -> None:
+def add_user_prompt(rec: SessionRecord, text) -> None:
+    if not isinstance(text, str):
+        return
     text = text.strip()
     if not text or text.startswith("<"):  # injected context, not a human prompt
         return
@@ -43,7 +49,9 @@ def add_user_prompt(rec: SessionRecord, text: str) -> None:
     rec.ended_on_question = False
 
 
-def add_assistant_text(rec: SessionRecord, text: str) -> None:
+def add_assistant_text(rec: SessionRecord, text) -> None:
+    if not isinstance(text, str):
+        return
     text = text.strip()
     if not text:
         return

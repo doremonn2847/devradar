@@ -3,8 +3,10 @@ $ErrorActionPreference = "Stop"
 
 $pythonw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source
 if (-not $pythonw) { throw "pythonw.exe not found on PATH. Install Python 3.12+ from python.org." }
-python -c "import devradar" 2>$null
-if ($LASTEXITCODE -ne 0) { throw "devradar is not installed. Run: pip install -e . (from the repo folder)" }
+# Check with the same interpreter the task will run (python.exe may be a different install or the Store alias).
+$pythonExe = Join-Path (Split-Path $pythonw) "python.exe"
+& $pythonExe -c "import devradar" 2>$null
+if ($LASTEXITCODE -ne 0) { throw "devradar is not installed for $pythonExe. Run: `"$pythonExe`" -m pip install -e ." }
 if (-not [Environment]::GetEnvironmentVariable("DEEPSEEK_API_KEY", "User")) {
     Write-Warning "DEEPSEEK_API_KEY is not set for your user. Run: setx DEEPSEEK_API_KEY sk-..."
 }

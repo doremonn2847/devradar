@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from devradar.collector.claude_code import parse_claude_line
@@ -45,7 +45,10 @@ def _ingest_file(conn: sqlite3.Connection, agent: str, path: Path) -> None:
     rec = _load_record(conn, key, agent)
     parse = PARSERS[agent]
     for line in lines:
-        parse(line, rec)
+        try:
+            parse(line, rec)
+        except Exception:  # one odd line must not lose the rest of the file
+            log.warning("unparseable line in %s", path, exc_info=True)
     if not rec.session_id:
         rec.session_id = path.stem
     project, display = resolve_project(rec.cwd)
@@ -71,17 +74,30 @@ def collect(conn: sqlite3.Connection, cfg: dict, now: datetime) -> list[str]:
         if not base.is_dir():
             continue
         for path in sorted(base.rglob("*.jsonl")):
+            if _is_sidechain_file(path, base):
+                continue
             try:
                 _ingest_file(conn, agent, path)
-            except OSError as e:  # file vanished or locked mid-scan; retry next pass
-                log.warning("skip %s: %s", path, e)
+                conn.commit()  # per file: never hold the write lock across the whole scan
+            except Exception:  # file vanished/locked, or bad data: drop this file's changes, retry next pass
+                conn.rollback()
+                log.warning("skip %s", path, exc_info=True)
     cutoff = now - timedelta(minutes=cfg["collector"]["finished_after_min"])
     finished = []
     for row in conn.execute(
         "SELECT session_id, last_event_at FROM sessions WHERE finished=0 AND last_event_at IS NOT NULL"
     ).fetchall():
-        if datetime.fromisoformat(row["last_event_at"]) <= cutoff:
-            finished.append(row["session_id"])
-    conn.executemany("UPDATE sessions SET finished=1 WHERE session_id=?", [(s,) for s in finished])
+        t = datetime.fromisoformat(row["last_event_at"])
+        if t.tzinfo is None:  # rows written before timestamps were normalised
+            t = t.replace(tzinfo=timezone.utc)
+        if t <= cutoff:
+            finished.append((t, row["session_id"]))
+    finished.sort()  # oldest first, so the newest session has the last word on project state
+    conn.executemany("UPDATE sessions SET finished=1 WHERE session_id=?", [(s,) for _, s in finished])
     conn.commit()
-    return sorted(finished)
+    return [s for _, s in finished]
+
+
+def _is_sidechain_file(path: Path, base: Path) -> bool:
+    """Claude Code subagent transcripts: <sid>/subagents/*.jsonl or legacy agent-*.jsonl siblings."""
+    return "subagents" in path.relative_to(base).parts or path.name.startswith("agent-")

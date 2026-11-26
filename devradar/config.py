@@ -19,6 +19,7 @@ DEFAULTS: dict = {
         },
     },
     "excerpt_max_tokens": 4000,
+    "llm_backfill_days": 14,  # older finished sessions get an excerpt but no LLM call (first install)
     "llm": {
         "base_url": "https://api.deepseek.com",
         "model": "deepseek-flash",
@@ -34,6 +35,7 @@ DEFAULTS: dict = {
     "rules": {
         "cooldown_days": 3,
         "stalled_days": 3,
+        "stalled_max_days": 21,
         "deadline_window_days": 14,
         "deadline_idle_days": 2,
         "loop_min_sessions": 3,

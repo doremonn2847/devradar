@@ -40,7 +40,8 @@ def _valid(d: dict) -> bool:
         return isinstance(x, list) and all(isinstance(i, dict) and keys <= i.keys() for i in x)
 
     return (isinstance(d.get("goal"), str) and isinstance(d.get("done"), list)
-            and all(isinstance(i, dict) and "item" in i for i in d["done"])
+            and all(isinstance(i, dict) and isinstance(i.get("item"), str)
+                    and isinstance(i.get("session_id", ""), str) for i in d["done"])
             and strs(d.get("next")) and strs(d.get("blockers"))
             and dicts(d.get("deadlines"), {"item", "date"}))
 
@@ -67,7 +68,8 @@ def update_project_state(conn: sqlite3.Connection, project: str, session_id: str
     if data is None:
         return None
 
-    known = {r["session_id"] for r in conn.execute("SELECT session_id FROM sessions WHERE project=?", (project,))}
+    # Only the session the model was shown may be cited for new items (old items keep their citations).
+    known = {session_id} | {d.get("session_id") for d in current.done}
     done = list(current.done)
     seen = {(d["item"], d.get("session_id")) for d in done}
     for d in data["done"]:

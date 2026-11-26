@@ -15,8 +15,8 @@ def _result_text(content) -> str:
 
 def parse_claude_line(line: str, rec: SessionRecord) -> None:
     obj = load(line)
-    if not obj or obj.get("type") not in ("user", "assistant"):
-        return
+    if not obj or obj.get("type") not in ("user", "assistant") or obj.get("isSidechain"):
+        return  # sidechain = subagent transcript; it carries the parent's sessionId
     msg = obj.get("message")
     if not isinstance(msg, dict):
         return
