@@ -1,7 +1,8 @@
 """Parser for Claude Code session JSONL (~/.claude/projects/<cwd>/<session>.jsonl)."""
 from __future__ import annotations
 
-from devradar.collector.common import add_assistant_text, add_user_prompt, load, parse_ts, touch
+from devradar.collector.common import (add_assistant_text, add_user_prompt, is_agy_command, load, parse_ts,
+                                       touch)
 from devradar.models import SessionRecord
 
 
@@ -49,6 +50,10 @@ def parse_claude_line(line: str, rec: SessionRecord) -> None:
             add_assistant_text(rec, b.get("text", ""))
         elif b.get("type") == "tool_use":
             inp = b.get("input") if isinstance(b.get("input"), dict) else {}
+            if b.get("name") in ("Bash", "PowerShell") and is_agy_command(inp.get("command")):
+                ts = parse_ts(obj.get("timestamp"))
+                if ts:
+                    rec.agy_launches.append(ts.isoformat())
             if isinstance(inp.get("file_path"), str):
                 rec.files_touched.add(inp["file_path"])
             if b.get("name") == "TodoWrite" and isinstance(inp.get("todos"), list):

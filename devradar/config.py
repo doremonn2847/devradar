@@ -16,6 +16,12 @@ DEFAULTS: dict = {
         "roots": {
             "claude_code": "~/.claude/projects",
             "codex": "~/.codex/sessions",
+            "agy_cli": "~/.gemini/antigravity-cli/brain",
+            "agy_app": [
+                "~/.gemini/antigravity/brain",
+                "~/.gemini/antigravity-ide/brain",
+                "~/.gemini/antigravity-backup/brain",
+            ],
         },
     },
     "excerpt_max_tokens": 4000,

@@ -1,7 +1,7 @@
 # DevRadar
 
-A background bot that reads your coding-agent sessions (Claude Code, Codex — whether you
-run them directly, in Orca or in T3 Code), keeps a progress record per project, pings you on
+A background bot that reads your coding-agent sessions (Claude Code and Codex — whether you
+run them directly, in Orca or in T3 Code — plus Antigravity's `agy` CLI and the Antigravity app), keeps a progress record per project, pings you on
 Telegram when something looks off, and sends a daily tech radar. Telegram, scheduling and
 replies are handled by [Hermes Agent](https://github.com/NousResearch/hermes-agent) on
 DeepSeek Flash; this repo is the worker and the tools Hermes uses.
@@ -28,8 +28,13 @@ Design: `docs/superpowers/specs/2026-11-27-devradar-design.md`
 
 ## How it works
 
-- Every 20 min the worker reads new lines from `%USERPROFILE%\.claude\projects` and
-  `%USERPROFILE%\.codex\sessions`. Orca worktrees fold into their main repo.
+- Every 20 min the worker reads new data from `%USERPROFILE%\.claude\projects`,
+  `%USERPROFILE%\.codex\sessions`, `%USERPROFILE%\.gemini\antigravity-cli\brain` (agy CLI) and
+  `%USERPROFILE%\.gemini\antigravity*\brain` (Antigravity app). Orca worktrees fold into their main repo.
+- `agy` conversations started by a Claude (or Codex) session count as that session's sub-work:
+  they inherit its project and add files/errors, but get no summary or "dangling" alert of their own.
+- Antigravity app conversations have no chat log; open `- [ ]` items in `task.md` become todos and
+  `walkthrough.md` counts as what got done.
 - When a session has been quiet for 30 min, it's distilled to a ~4K-token excerpt and DeepSeek
   updates that project's goal / done / next / blockers / deadlines. Every "done" item must cite
   a session it came from.
@@ -46,6 +51,7 @@ Design: `docs/superpowers/specs/2026-11-27-devradar-design.md`
 - "DocuSense deadline is 2026-12-20" → pinned; the summarizer won't override it
 - "snooze Đề Cũ 3" → no alerts for that project for 3 days
 - "more 2" → deeper look at radar item 2
+- "git status in de-cu" → runs on your laptop; anything risky waits for your yes (see `hermes\setup.md` §5)
 
 ## Dev
 
@@ -54,9 +60,11 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The parser fixtures in `tests/fixtures/` are synthetic. Before trusting the parsers, replace them
-with one redacted real session from each of `.claude\projects` and `.codex\sessions`, and re-run
-the tests.
+The parser fixtures in `tests/fixtures/` are synthetic, built from public descriptions of each
+format. Before trusting the parsers, add one redacted real session from each of `.claude\projects`,
+`.codex\sessions`, `.gemini\antigravity-cli\brain` and `.gemini\antigravity*\brain`, and re-run the
+tests. Also check how your orchestrator launches `agy`: linking looks for an `agy` command in the
+Claude session's Bash/PowerShell tool calls.
 
 ## Uninstall
 

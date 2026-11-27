@@ -23,6 +23,9 @@ class SessionRecord:
     files_touched: set[str] = field(default_factory=set)
     open_todos: list[str] = field(default_factory=list)
     ended_on_question: bool = False
+    orchestrated: bool = False        # launched by another agent (agy under Claude): sub-work
+    agy_launches: list[str] = field(default_factory=list)  # ISO times this session ran `agy`
+    cwd_source: str = ""              # "explicit" | "inferred"
 
     def to_json_dict(self) -> dict:
         d = asdict(self)

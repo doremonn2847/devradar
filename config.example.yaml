@@ -7,6 +7,11 @@ collector:
   roots:
     claude_code: "~/.claude/projects"
     codex: "~/.codex/sessions"
+    agy_cli: "~/.gemini/antigravity-cli/brain"
+    agy_app:
+      - "~/.gemini/antigravity/brain"
+      - "~/.gemini/antigravity-ide/brain"
+      - "~/.gemini/antigravity-backup/brain"
 llm:
   base_url: https://api.deepseek.com
   model: deepseek-flash

@@ -40,7 +40,8 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, llm: LLMClient | None, now: d
         over_cap = month_cost(conn, now) >= cfg["cost"]["soft_cap_usd"]  # re-checked per call
         if over_cap:
             log.info("soft cap reached; skipping LLM state update for %s", sid)
-        if llm is not None and recent and not over_cap and row["project"] != "unknown":
+        # orchestrated (agy under Claude) sessions are covered by the parent session's summary
+        if llm is not None and recent and not over_cap and not rec.orchestrated and row["project"] != "unknown":
             try:
                 update_project_state(conn, row["project"], sid, llm)
             except Exception:  # network/API errors must not stop the cycle

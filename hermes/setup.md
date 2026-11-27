@@ -46,16 +46,37 @@ mcp_servers:
 
 Then in a Hermes chat run `/reload-mcp`, and ask "what projects do you see?".
 
-## 5. Trim tools (cost + safety)
+## 5. Tools: commands from Telegram, no shell for scheduled jobs
 
-Every call carries all enabled tool definitions, so fewer tools = cheaper calls. And since
-anyone holding your phone can talk to this bot, it should not have a shell on your laptop.
+You run commands on the laptop from Telegram (Telegram locked behind Face ID). The scheduled
+jobs are different: they read text written by strangers (Hacker News, GitHub, papers) and your
+transcripts, and a planted instruction there must not reach a shell. So:
 
-```yaml
-disabled_toolsets: [browser, image_gen, tts, code_execution, terminal, file]
-```
+1. **Trim what nobody uses** (each enabled tool is sent with every call, so this also cuts cost):
 
-Keep: `memory`, `cronjob`, `web`, and the `devradar` MCP server. Check with `/tools list`.
+   ```yaml
+   disabled_toolsets: [browser, image_gen, tts, code_execution]
+   ```
+
+2. **Per platform**, run `hermes tools` (interactive, per platform):
+   - **telegram**: enable `terminal` and `file` (plus `memory`, `cronjob`, `web`, MCP `devradar`).
+   - **cron**: disable `terminal` and `file`; keep `web`, `memory` and MCP `devradar`.
+     Cron jobs use this cron-platform toolset unless a job sets its own `enabled_toolsets`.
+
+3. **Approvals**, in `config.yaml`:
+
+   ```yaml
+   approvals:
+     mode: manual       # every dangerous command waits for your yes/no in Telegram
+     timeout: 300       # no answer in 5 min = denied
+     cron_mode: deny    # scheduled jobs can never run a dangerous command
+   ```
+
+   Keep `mode: manual`. Answering "Always approve" for a pattern, or switching to `smart`/`off`,
+   removes the one check between a planted instruction and your laptop.
+
+Check with `/tools list` in a Telegram chat, and once more inside a cron run (`hermes cron run
+devradar-recap`, then look at the run log): terminal must be absent there.
 
 ## 6. Skill
 

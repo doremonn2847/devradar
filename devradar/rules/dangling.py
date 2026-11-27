@@ -19,6 +19,8 @@ def check(conn, now, cfg) -> list[Alert]:
         if last_activity(conn, r["project"]) > end:
             continue  # resumed (or new work) on the same project
         rec = record(r)
+        if rec.get("orchestrated"):
+            continue  # agy launched by another agent: that agent, not the user, owes the reply
         todos = rec.get("open_todos") or []
         if todos:
             reason = f"open todo \"{todos[0]}\""
