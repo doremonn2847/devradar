@@ -43,3 +43,12 @@ def test_unicode_path(tmp_path):
     _make_repo(repo)
     _, name = resolve_project(str(repo))
     assert name == "Đề Cũ"
+
+
+def test_deleted_subfolder_resolves_to_enclosing_repo(tmp_path):
+    repo = tmp_path / "mvp-exam-assistant"
+    _make_repo(repo)
+    gone = repo / "tmp" / "tc" / "159"          # scratch folder an agent used, since deleted
+    key, name = resolve_project(str(gone))
+    assert (key, name) == resolve_project(str(repo))
+    assert name == "mvp-exam-assistant"

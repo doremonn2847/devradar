@@ -27,21 +27,32 @@ def _git(cwd: str, *args: str) -> str | None:
     return r.stdout if r.returncode == 0 else None
 
 
+def _nearest_existing_dir(p: str) -> str | None:
+    p = os.path.normpath(p)
+    while p and not os.path.isdir(p):
+        parent = os.path.dirname(p)
+        if parent == p:
+            return None
+        p = parent
+    return p or None
+
+
 @functools.lru_cache(maxsize=512)
 def resolve_project(cwd: str | None) -> tuple[str, str]:
     """Return (project_key, display_name). Never raises."""
     if not cwd:
         return ("unknown", "unknown")
     root = None
-    if os.path.isdir(cwd):
-        out = _git(cwd, "worktree", "list", "--porcelain")
+    probe = _nearest_existing_dir(cwd)  # agents often work in scratch subfolders that are later deleted
+    if probe:
+        out = _git(probe, "worktree", "list", "--porcelain")
         if out:
             for line in out.splitlines():
                 if line.startswith("worktree "):
                     root = line[len("worktree "):].strip()
                     break
         if root is None:
-            top = _git(cwd, "rev-parse", "--show-toplevel")
+            top = _git(probe, "rev-parse", "--show-toplevel")
             root = top.strip() if top else None
     root = root or cwd
     return (_norm(root), _name(os.path.normpath(root)))

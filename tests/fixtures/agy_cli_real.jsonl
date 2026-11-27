@@ -1,0 +1,2 @@
+{"step_index": 0, "source": "USER_EXPLICIT", "type": "USER_INPUT", "status": "DONE", "created_at": "2026-11-23T04:59:09Z", "content": "<USER_REQUEST>\nlorem lorem lorem lorem lorem lorem\n</USER_REQUEST>"}
+{"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE", "status": "DONE", "created_at": "2026-11-23T04:59:10Z", "model": "lorem", "input_tokens": 11923, "cache_read_tokens": 0, "output_tokens": 56172, "content": "lorem lorem lorem lorem lorem lorem", "thinking": "lorem lorem lorem lorem lorem lorem", "truncated_fields": ["lorem", "lorem"]}

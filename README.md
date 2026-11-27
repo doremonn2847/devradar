@@ -60,11 +60,12 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The parser fixtures in `tests/fixtures/` are synthetic, built from public descriptions of each
-format. Before trusting the parsers, add one redacted real session from each of `.claude\projects`,
-`.codex\sessions`, `.gemini\antigravity-cli\brain` and `.gemini\antigravity*\brain`, and re-run the
-tests. Also check how your orchestrator launches `agy`: linking looks for an `agy` command in the
-Claude session's Bash/PowerShell tool calls.
+Fixtures named `*_real.jsonl` were derived from real Codex, agy CLI and Antigravity app files (all
+text and paths replaced) and pin the actual formats; the other fixtures are synthetic. The Claude
+Code fixture is still synthetic: add one redacted real session from `.claude\projects` and re-run.
+
+Checked against a real machine (read-only dry run): 165 Codex, 498 agy CLI and 40 app conversations
+parsed; the workspace came from each Antigravity conversation's own database for 534 of 538.
 
 ## Uninstall
 

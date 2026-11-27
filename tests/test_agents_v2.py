@@ -40,7 +40,6 @@ def test_agy_cli_parse():
     rec = _parse(parse_agy_line, "agy_transcript.jsonl", "agy_cli")
     assert rec.user_prompts == ["Refactor the OCR pipeline into modules"]
     assert rec.assistant_tail[-1] == "Done: pipeline split into modules."
-    assert rec.orchestrated is True
     assert rec.errors and "ImportError" in rec.errors[0]
     assert r"C:\Users\me\code\docusense\src\pipeline\__init__.py" in rec.files_touched
     assert rec.cwd == r"C:\Users\me\code\docusense"   # Cwd arg wins over file-path inference

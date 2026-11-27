@@ -37,6 +37,10 @@ def _read(p: Path) -> str:
         return ""
 
 
+def read_task_todos(d: Path) -> list[str]:
+    return [_LINK.sub(r"\1", m.group(2)) for m in _OPEN_ITEM.finditer(_read(d / "task.md"))]
+
+
 def read_agy_app_dir(d: Path) -> SessionRecord:
     rec = SessionRecord(agent="agy_app", session_id=d.name, path=str(d))
     mtimes, texts = [], {}

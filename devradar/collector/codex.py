@@ -48,6 +48,21 @@ def _tool_output(payload: dict, rec: SessionRecord) -> None:
         rec.errors.append(str(out.get("output") or f"exit code {code}")[:300])
 
 
+def _item_completed(item, rec: SessionRecord, ts) -> None:
+    """Real Codex logs report finished commands and file edits as item_completed events."""
+    if not isinstance(item, dict):
+        return
+    if item.get("type") == "CommandExecution":
+        code = item.get("exit_code")
+        if isinstance(code, int) and code != 0:
+            out = str(item.get("aggregated_output") or f"exit code {code}")
+            rec.errors.append(out[-300:])  # the failure is usually at the end of the output
+        if is_agy_command(item.get("command")) and ts:
+            rec.agy_launches.append(ts.isoformat())
+    elif item.get("type") == "FileChange" and isinstance(item.get("changes"), dict):
+        rec.files_touched.update(k for k in item["changes"] if isinstance(k, str))
+
+
 def parse_codex_line(line: str, rec: SessionRecord) -> None:
     obj = load(line)
     if not obj:
@@ -62,7 +77,13 @@ def parse_codex_line(line: str, rec: SessionRecord) -> None:
             rec.session_id = payload["id"]
         if payload.get("cwd"):
             rec.cwd = payload["cwd"]
+        # `codex exec` runs are launched by scripts/orchestrators; the interactive app is "codex-tui"
+        rec.orchestrated = payload.get("originator") == "codex_exec" or payload.get("source") == "exec"
         touch(rec, ts)
+        return
+    if kind == "event_msg" and payload.get("type") == "item_completed":
+        touch(rec, ts)
+        _item_completed(payload.get("item"), rec, ts)
         return
     if kind != "response_item":
         return

@@ -7,8 +7,9 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from devradar.collector.agy_app import read_agy_app_dir, signature
+from devradar.collector.agy_app import read_agy_app_dir, read_task_todos, signature
 from devradar.collector.agy_cli import parse_agy_line
+from devradar.collector.agy_workspace import conversation_db, workspace_from_db
 from devradar.collector.claude_code import parse_claude_line
 from devradar.collector.codex import parse_codex_line
 from devradar.collector.repo import resolve_project
@@ -17,7 +18,9 @@ from devradar.config import expand_path
 from devradar.models import SessionRecord
 
 log = logging.getLogger(__name__)
-LINE_PARSERS = {"claude_code": parse_claude_line, "codex": parse_codex_line, "agy_cli": parse_agy_line}
+LINE_PARSERS = {"claude_code": parse_claude_line, "codex": parse_codex_line,
+                "agy_cli": parse_agy_line, "agy_app": parse_agy_line}
+TRANSCRIPT = Path(".system_generated") / "logs" / "transcript.jsonl"
 # An agy conversation belongs to the launch closest before it, within this window.
 LINK_BEFORE, LINK_AFTER = timedelta(minutes=30), timedelta(minutes=2)
 
@@ -52,7 +55,8 @@ def _upsert_file(conn, key: str, offset: int, size: int, agent: str) -> None:
     )
 
 
-def _ingest_jsonl(conn: sqlite3.Connection, agent: str, path: Path, sid_hint: str | None = None) -> None:
+def _ingest_jsonl(conn: sqlite3.Connection, agent: str, path: Path, sid_hint: str | None = None,
+                 db: Path | None = None) -> None:
     key = str(path)
     size = path.stat().st_size
     row = conn.execute("SELECT offset, size FROM files WHERE path=?", (key,)).fetchone()
@@ -74,17 +78,43 @@ def _ingest_jsonl(conn: sqlite3.Connection, agent: str, path: Path, sid_hint: st
             log.warning("unparseable line in %s", path, exc_info=True)
     if not rec.session_id:
         rec.session_id = sid_hint or path.stem
+    if agent in ("agy_cli", "agy_app"):
+        rec.orchestrated = agent == "agy_cli"  # the CLI is driven by the user's orchestrator; the app by the user
+        _apply_workspace(rec, db)
     _save_session(conn, rec, agent, key)
 
 
+def _apply_workspace(rec: SessionRecord, db: Path | None) -> None:
+    if rec.cwd_source == "workspace" or db is None:
+        return
+    ws = workspace_from_db(db)
+    if ws:
+        rec.cwd, rec.cwd_source = ws, "workspace"
+
+
 def _ingest_agy_app(conn: sqlite3.Connection, d: Path) -> None:
+    """App conversation: the transcript (if any) is read incrementally; task.md todos are layered on top."""
+    db = conversation_db(d.parent, d.name)
+    transcript = d / TRANSCRIPT
+    if transcript.is_file():
+        _ingest_jsonl(conn, "agy_app", transcript, d.name, db)
     key = str(d)
     mtime_ns, size = signature(d)
     row = conn.execute("SELECT offset, size FROM files WHERE path=?", (key,)).fetchone()
     if row and row["offset"] == mtime_ns and row["size"] == size:
         return
     _upsert_file(conn, key, mtime_ns, size, "agy_app")
-    _save_session(conn, read_agy_app_dir(d), "agy_app", key)
+    if transcript.is_file():
+        srow = conn.execute("SELECT record_json FROM sessions WHERE session_id=?", (d.name,)).fetchone()
+        if srow is None or not (d / "task.md").is_file():
+            return
+        rec = SessionRecord.from_json_dict(json.loads(srow["record_json"]))
+        rec.open_todos = read_task_todos(d)
+        _save_session(conn, rec, "agy_app", str(transcript))
+    else:  # older conversations: Markdown artifacts only
+        rec = read_agy_app_dir(d)
+        _apply_workspace(rec, db)
+        _save_session(conn, rec, "agy_app", key)
 
 
 def _roots(value) -> list[Path]:
@@ -101,7 +131,8 @@ def _units(agent: str, base: Path):
             yield _ingest_jsonl, (agent, path)
     elif agent == "agy_cli":
         for path in sorted(base.glob("*/.system_generated/logs/transcript.jsonl")):
-            yield _ingest_jsonl, (agent, path, path.parents[2].name)
+            cid = path.parents[2].name
+            yield _ingest_jsonl, (agent, path, cid, conversation_db(base, cid))
 
 
 def _agy_app_dirs(bases: list[Path]) -> list[Path]:
@@ -109,8 +140,12 @@ def _agy_app_dirs(bases: list[Path]) -> list[Path]:
     best: dict[str, tuple[int, Path]] = {}
     for base in bases:
         for d in base.iterdir():
-            if d.is_dir() and any(f.suffix == ".md" for f in d.iterdir()):
-                m = signature(d)[0]
+            if not d.is_dir():
+                continue
+            t = d / TRANSCRIPT
+            has_md = any(f.suffix == ".md" for f in d.iterdir())
+            if t.is_file() or has_md:
+                m = max(signature(d)[0], t.stat().st_mtime_ns if t.is_file() else 0)
                 if d.name not in best or m > best[d.name][0]:
                     best[d.name] = (m, d)
     return [d for _, d in sorted(best.values(), key=lambda x: str(x[1]))]
@@ -126,10 +161,12 @@ def _run(conn, fn, args) -> None:
 
 
 def link_orchestrated(conn: sqlite3.Connection) -> None:
-    """Give each unfinished agy CLI session the project of the session that launched it."""
-    agy = conn.execute("SELECT session_id, started_at FROM sessions "
+    """Fallback: give unfinished agy CLI sessions without a known workspace the launching session's project."""
+    agy = conn.execute("SELECT session_id, started_at, record_json FROM sessions "
                        "WHERE agent='agy_cli' AND finished=0 AND started_at IS NOT NULL").fetchall()
     for a in agy:
+        if json.loads(a["record_json"] or "{}").get("cwd_source") == "workspace":
+            continue  # the conversation's own database named its workspace: that is exact
         start = datetime.fromisoformat(a["started_at"])
         lo, hi = (start - LINK_BEFORE).isoformat(), (start + LINK_AFTER).isoformat()
         best = None
