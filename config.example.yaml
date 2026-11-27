@@ -16,6 +16,8 @@ llm:
   base_url: https://api.deepseek.com
   model: deepseek-flash
   api_key_env: DEEPSEEK_API_KEY
+  thinking: disabled      # DeepSeek's default is enabled at high effort; the worker doesn't need it
+  reasoning_effort: low   # low | high | max — used only if thinking is enabled ("medium" means high)
 cost:
   soft_cap_usd: 6
 rules:

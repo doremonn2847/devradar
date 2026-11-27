@@ -17,7 +17,9 @@ DeepSeek is a built-in provider. Put your key in `%LOCALAPPDATA%\hermes\.env`:
 DEEPSEEK_API_KEY=sk-...
 ```
 
-Then run `hermes model`, choose **DeepSeek**, and enter model `deepseek-flash`.
+Then run `hermes model`, choose **DeepSeek**, and enter model `deepseek-flash`. If it asks for a
+reasoning effort, pick **low**: DeepSeek has no medium (it maps medium to high), and thinking
+defaults to high effort, whose reasoning tokens bill as output. Raise it only for a hard task.
 Result in `%LOCALAPPDATA%\hermes\config.yaml` should look like:
 
 ```yaml

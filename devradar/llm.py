@@ -10,6 +10,9 @@ from typing import Protocol
 from devradar.usage import record_usage
 
 
+EFFORTS = ("low", "high", "max")
+
+
 class LLMClient(Protocol):
     def complete_json(self, system: str, user: str) -> dict: ...
 
@@ -24,16 +27,29 @@ class DeepSeekClient:
             raise RuntimeError(f"{llm['api_key_env']} is not set")
         self.client = OpenAI(base_url=llm["base_url"], api_key=key, timeout=60)
         self.model = llm["model"]
+        self.thinking = llm.get("thinking", "disabled")
+        self.effort = llm.get("reasoning_effort", "low")
+        if self.thinking not in ("enabled", "disabled"):
+            raise ValueError(f"llm.thinking must be enabled or disabled, not {self.thinking!r}")
+        if self.effort not in EFFORTS:
+            # DeepSeek silently maps "medium" to "high"; refuse it so the cost isn't a surprise
+            raise ValueError(f"llm.reasoning_effort must be one of {EFFORTS}, not {self.effort!r} "
+                             "(DeepSeek treats medium as high)")
         self.conn = conn
         self.prices = cfg["cost"]["prices"]
 
     def complete_json(self, system: str, user: str) -> dict:
-        r = self.client.chat.completions.create(
+        kwargs = dict(
             model=self.model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             response_format={"type": "json_object"},
-            temperature=0.2,
+            extra_body={"thinking": {"type": self.thinking}},
         )
+        if self.thinking == "enabled":
+            kwargs["reasoning_effort"] = self.effort  # temperature is ignored in thinking mode
+        else:
+            kwargs["temperature"] = 0.2
+        r = self.client.chat.completions.create(**kwargs)
         u = r.usage
         if u is not None:
             hit = getattr(u, "prompt_cache_hit_tokens", 0) or 0

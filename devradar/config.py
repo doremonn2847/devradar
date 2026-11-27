@@ -30,6 +30,10 @@ DEFAULTS: dict = {
         "base_url": "https://api.deepseek.com",
         "model": "deepseek-flash",
         "api_key_env": "DEEPSEEK_API_KEY",
+        # DeepSeek turns thinking on at "high" effort unless told otherwise; the worker's job
+        # (excerpt -> short JSON state) doesn't need it, and reasoning tokens bill as output.
+        "thinking": "disabled",        # disabled | enabled
+        "reasoning_effort": "low",     # low | high | max (only sent when thinking is enabled)
     },
     "cost": {
         "soft_cap_usd": 6,
