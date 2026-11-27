@@ -147,3 +147,16 @@ def test_db_workspace_beats_launch_linking(tmp_path):
     disp = conn.execute("SELECT p.display FROM sessions s JOIN projects p ON p.name = s.project "
                         "WHERE s.session_id='c1'").fetchone()[0]
     assert disp == "mvp-exam-assistant"
+
+
+def test_claude_real_session():
+    from devradar.collector.claude_code import parse_claude_line
+    rec = _parse(parse_claude_line, "claude_real.jsonl", "claude_code")
+    assert rec.session_id == "real-claude"
+    assert rec.user_prompts == ["lorem prompt 2", "lorem prompt 1"]       # no <local-command-stdout>, no api-request-blob
+    assert rec.errors == ["Exit code 1\nlorem error"]
+    assert rec.files_touched == {r"C:\Users\me\proj\src\judge.py"}
+    assert rec.assistant_tail == ["lorem reply 2"]
+    assert rec.agy_launches == ["2026-11-15T14:27:44.520000+00:00"]        # full-path agy launch is detected
+    assert rec.cwd == r"C:\Users\me\proj\tmp\tc\59"                         # scratch dir; repo.py folds it to the repo
+    assert rec.last_event_at == datetime(2026, 11, 15, 14, 27, 44, 520000, tzinfo=UTC)

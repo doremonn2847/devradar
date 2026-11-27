@@ -60,9 +60,8 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Fixtures named `*_real.jsonl` were derived from real Codex, agy CLI and Antigravity app files (all
-text and paths replaced) and pin the actual formats; the other fixtures are synthetic. The Claude
-Code fixture is still synthetic: add one redacted real session from `.claude\projects` and re-run.
+Fixtures named `*_real.jsonl` were derived from real Claude Code, Codex, agy CLI and Antigravity
+app files (all text and paths replaced) and pin the actual formats; the other fixtures are synthetic.
 
 Checked against a real machine (read-only dry run): 165 Codex, 498 agy CLI and 40 app conversations
 parsed; the workspace came from each Antigravity conversation's own database for 534 of 538.
