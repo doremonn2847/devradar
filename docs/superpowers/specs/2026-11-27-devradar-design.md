@@ -234,3 +234,32 @@ devradar/
 - How the worker triggers Hermes for alerts (on-demand cron run vs. gateway API),
   whichever the installed Hermes version supports.
 - Exact Hermes tool names to disable.
+
+## 10. Addendum (2026-11-27): Antigravity, Codex details, Telegram commands
+
+Approved by the user in conversation.
+
+**Antigravity CLI (`agy`)** — launched by the user's Claude orchestrator, so it is sub-work.
+- Source: `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
+  (one record per step: `step_index`, `source` USER_EXPLICIT|MODEL|SYSTEM, `type`, `status`,
+  `created_at`, `content`, `tool_calls[{name,args}]`; prompts wrapped in `<USER_REQUEST>`).
+- Project: the Claude/Codex session whose shell tool ran `agy` closest before the conversation
+  started; fallback = dominant directory of paths in tool-call args, resolved to its git repo.
+- Contributes activity, files, errors. No LLM state update of its own, no dangling/question alerts.
+
+**Antigravity app/editor** — driven by the user directly; a full session.
+- Sources: `~/.gemini/{antigravity,antigravity-ide,antigravity-backup}/brain/<id>/*.md`;
+  the same id in several roots → newest copy wins.
+- `task.md`: `- [ ]` / `- [/]` → open todos; `walkthrough.md` → recent assistant text.
+  No chat log, so no prompts, errors or unanswered-question signals.
+- Re-read whenever a file in the conversation folder changes. Project from paths mentioned.
+
+**Codex** — add errors (non-zero exit codes / failed tool output) and files touched (apply_patch).
+
+**Telegram commands** — the user enables shell/file tools in chat (Telegram behind Face ID).
+- Chat: terminal + file on; `approvals.mode: manual` (Approve/Deny buttons in Telegram).
+- Scheduled jobs (recap, radar, alerts) read untrusted web/transcript text, so their
+  toolsets exclude terminal/file, and `approvals.cron_mode: deny`.
+
+All formats are taken from public documentation; real samples from the user's machine are
+still needed to confirm them (the folder-access request was not available in this session).

@@ -1,0 +1,9 @@
+{"step_index": 0, "source": "USER_EXPLICIT", "type": "USER_INPUT", "status": "DONE", "created_at": "2026-08-06T04:19:34Z", "content": "<USER_REQUEST>\nlorem lorem lorem lorem lorem lorem\n</USER_REQUEST>"}
+{"step_index": 1, "source": "USER_EXPLICIT", "type": "RUN_COMMAND", "status": "DONE", "created_at": "2026-08-06T04:17:27Z", "content": "lorem lorem lorem lorem lorem lorem exit code: 1"}
+{"step_index": 4, "source": "SYSTEM", "type": "CONVERSATION_HISTORY", "status": "DONE", "created_at": "2026-08-06T04:19:34Z"}
+{"step_index": 6, "source": "SYSTEM", "type": "EPHEMERAL_MESSAGE", "status": "DONE", "created_at": "2026-08-06T04:19:34Z"}
+{"step_index": 7, "source": "MODEL", "type": "PLANNER_RESPONSE", "status": "DONE", "created_at": "2026-08-06T04:19:34Z", "thinking": "lorem lorem lorem lorem lorem lorem", "tool_calls": [{"name": "run_command", "args": {"CommandLine": "lorem lorem", "Cwd": "lorem", "WaitMsBeforeAsync": "lorem", "toolAction": "lorem", "toolSummary": "lorem"}}]}
+{"step_index": 8, "source": "MODEL", "type": "RUN_COMMAND", "status": "DONE", "created_at": "2026-08-06T04:19:36Z", "content": "lorem lorem lorem lorem lorem lorem exit code: 1"}
+{"step_index": 11, "source": "MODEL", "type": "PLANNER_RESPONSE", "status": "DONE", "created_at": "2026-08-06T04:19:43Z", "tool_calls": [{"name": "write_to_file", "args": {"TargetFile": "C:\\Users\\me\\proj\\src\\a.py", "CodeContent": "lorem", "toolAction": "lorem"}}]}
+{"step_index": 12, "source": "MODEL", "type": "RUN_COMMAND", "status": "DONE", "created_at": "2026-08-06T04:19:44Z", "content": "lorem lorem lorem lorem lorem lorem"}
+{"step_index": 17, "source": "MODEL", "type": "PLANNER_RESPONSE", "status": "DONE", "created_at": "2026-08-06T04:19:54Z", "content": "lorem lorem lorem lorem lorem lorem", "thinking": "lorem lorem lorem lorem lorem lorem"}
